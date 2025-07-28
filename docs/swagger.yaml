@@ -1,0 +1,1989 @@
+swagger: "2.0"
+info:
+  title: Restfull API
+  description: API hệ thống bán lẻ đồ gia dụng
+  version: "1.0"
+host: "26.107.218.28:5000"
+basePath: "/api"
+schemes:
+  - http
+securityDefinitions:
+  Bearer:
+    type: apiKey
+    name: Authorization
+    in: header
+    description: "Token phải có dạng 'Bearer <JWT>'"
+definitions:
+  ProductDetail:
+    type: object
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+      description:
+        type: string
+      price:
+        type: number
+      stock:
+        type: integer
+      material:
+        type: string
+      origin:
+        type: string
+      brand:
+        type: string
+      discount:
+        type: integer
+      category_id:
+        type: integer
+      rate:
+        type: integer
+      sold:
+        type: integer
+      images:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: integer
+            url:
+              type: string
+            is_default:
+              type: boolean
+  categories:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        parent_id:
+          type: integer
+
+  CategoryRequest:
+    type: object
+    properties:
+      name:
+        type: string
+      parent_id:
+        type: integer
+  ErrorResponse:
+    type: object
+    properties:
+      message:
+        type: string
+  SuccessResponse:
+    type: object
+    properties:
+      message:
+        type: string
+
+paths:
+  /auth/register:
+    post:
+      tags:
+        - auth
+      summary: Đăng ký tài khoản
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - email
+              - password
+            properties:
+              username:
+                type: string
+              email:
+                type: string
+              password:
+                type: string
+                format: password
+              full_name:
+                type: string
+              phone_number:
+                type: string
+              date_of_birth:
+                type: string
+                format: date
+              gender:
+                type: string
+      responses:
+        201:
+          description: Đăng ký thành công
+        400:
+          description: Thiếu thông tin hoặc lỗi đầu vào
+        409:
+          description: Email hoặc Username đã tồn tại
+  /auth/login:
+    post:
+      tags:
+        - auth
+      summary: Đăng nhập
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - identity
+              - password
+            properties:
+              identity:
+                type: string
+              password:
+                type: string
+                format: password
+      responses:
+        200:
+          description: Đăng nhập thành công, trả về access token
+        401:
+          description: Sai thông tin đăng nhập
+        403:
+          description: Tài khoản bị vô hiệu hóa
+  /auth/logout:
+    post:
+      tags:
+        - auth
+      summary: Đăng xuất
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: Đăng xuất thành công
+  /auth/forgot-password:
+    post:
+      tags:
+        - auth
+      summary: Yêu cầu đặt lại mật khẩu
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - email
+            properties:
+              email:
+                type: string
+      responses:
+        200:
+          description: Đã gửi mã đặt lại mật khẩu
+        404:
+          description: Email không tồn tại
+  /auth/reset-password:
+    post:
+      tags:
+        - auth
+      summary: Đặt lại mật khẩu
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - email
+              - reset_code
+              - new_password
+            properties:
+              email:
+                type: string
+              reset_code:
+                type: string
+              new_password:
+                type: string
+                format: password
+      responses:
+        200:
+          description: Đặt lại mật khẩu thành công
+        422:
+          description: Mật khẩu không đủ 6 ký tự 
+        403:
+          description: Mã không hợp lệ hoặc đã hết hạn
+  /auth/change-password:
+    put:
+      tags:
+        - auth
+      summary: Thay đổi mật khẩu
+      security:
+        - Bearer: []
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - old_password
+              - new_password
+            properties:
+              old_password:
+                type: string
+                format: password
+              new_password:
+                type: string
+                format: password
+      responses:
+        200:
+          description: Thay đổi mật khẩu thành công
+        400:
+          description: Mật khẩu cũ không đúng hoặc lỗi đầu vào
+  /auth/request-email-change:
+    post:
+      tags:
+        - auth
+      summary: Yêu cầu thay đổi email
+      security:
+        - Bearer: []
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - new_email
+            properties:
+              new_email:
+                type: string
+      responses:
+        200:
+          description: Đã gửi mã xác nhận đến email mới
+        400:
+          description: Email đã tồn tại
+  /auth/change-email:
+    put:
+      tags:
+        - auth
+      summary: Xác nhận thay đổi email
+      security:
+        - Bearer: []
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - new_email
+              - confirmation_code
+            properties:
+              new_email:
+                type: string
+              confirmation_code:
+                type: string
+      responses:
+        422:
+          description: Email không đúng format
+        409:
+          description: Email trùng với email cũ
+        200:
+          description: Email đã được cập nhật
+        400:
+          description: Mã xác nhận không hợp lệ hoặc đã hết hạn
+  /auth/change-username:
+    put:
+      tags:
+        - auth
+      summary: Thay đổi username
+      security:
+        - Bearer: []
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - new_username
+            properties:
+              new_username:
+                type: string
+      responses:
+        200:
+          description: Username đã được cập nhật
+        400:
+          description: Username đã tồn tại
+  /user/grant-staff/{user_id}:
+    put:
+      tags:
+        - user
+      summary: Cấp quyền Staff cho User (Chỉ Admin)
+      security:
+        - Bearer: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          type: integer
+      responses:
+        200:
+          description: Cấp quyền Staff thành công
+        400:
+          description: User đã là Staff hoặc không thể cấp quyền cho Admin
+        403:
+          description: Không đủ quyền
+        404:
+          description: User không tồn tại
+
+  /user/update-status/{user_id}:
+    put:
+      tags:
+        - user
+      summary: Admin cập nhật trạng thái tài khoản user
+      security:
+        - Bearer: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          type: integer
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              is_active:
+                type: boolean
+
+      responses:
+        200:
+          description: Trạng thái tài khoản đã được cập nhật
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+        404:
+          description: Người dùng không tồn tại
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        400:
+          description: Thiếu trường 'is_active'
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  /user/profile:
+    get:
+      tags:
+        - user
+      summary: Lấy thông tin cá nhân
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: Trả về thông tin người dùng
+        404:
+          description: User không tồn tại
+
+  /user/update-profile:
+    put:
+      tags:
+        - user
+      summary: Cập nhật thông tin cá nhân
+      security:
+        - Bearer: []
+      parameters:
+        - in: body
+          name: body
+          schema:
+            type: object
+            properties:
+              full_name:
+                type: string
+                required: false
+              phone_number:
+                type: string
+                required: false
+              date_of_birth:
+                type: string
+                format: date
+                required: false
+              gender:
+                type: string
+                enum: ["Male", "Female", "Other"]
+                required: false
+      responses:
+        200:
+          description: Cập nhật thành công
+        400:
+          description: Lỗi dữ liệu đầu vào
+        404:
+          description: User không tồn tại
+
+  /user/update-avatar:
+    put:
+      tags:
+        - user
+      summary: Cập nhật ảnh đại diện
+      security:
+        - Bearer: []
+      consumes:
+        - multipart/form-data
+      parameters:
+        - name: avatar
+          in: formData
+          required: true
+          type: file
+      responses:
+        200:
+          description: Cập nhật thành công
+        400:
+          description: Không có file hoặc lỗi xử lý file
+        404:
+          description: User không tồn tại
+
+  
+  /user/addresses:
+    get:
+      tags:
+        - user
+      summary: Lấy danh sách địa chỉ
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: Trả về danh sách địa chỉ của người dùng
+        404:
+          description: User không tồn tại
+        401:
+          description: Yêu cầu không hợp lệ hoặc không có quyền truy cập
+
+  /user/add-address:
+    post:
+      tags:
+        - user
+      summary: Thêm địa chỉ mới
+      security:
+        - Bearer: []
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              full_name:
+                type: string
+              phone_number:
+                type: string
+              street_address:
+                type: string
+              district:
+                type: string
+              province:
+                type: string
+              city:
+                type: string
+              state:
+                type: string
+              country:
+                type: string
+              postal_code:
+                type: string
+              is_default:
+                type: boolean
+      responses:
+        201:
+          description: Địa chỉ được thêm thành công
+        400:
+          description: Dữ liệu không hợp lệ
+        401:
+          description: Yêu cầu không hợp lệ hoặc không có quyền truy cập
+
+  /user/update-address/{address_id}:
+    put:
+      tags:
+        - user
+      summary: Cập nhật địa chỉ
+      security:
+        - Bearer: []
+      parameters:
+        - name: address_id
+          in: path
+          required: true
+          type: integer
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              full_name:
+                type: string
+              phone_number:
+                type: string
+              street_address:
+                type: string
+              district:
+                type: string
+              province:
+                type: string
+              city:
+                type: string
+              state:
+                type: string
+              country:
+                type: string
+              postal_code:
+                type: string
+              is_default:
+                type: boolean
+      responses:
+        200:
+          description: Đã cập nhật địa chỉ thành công
+        404:
+          description: Địa chỉ không tồn tại
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  /user/delete-address/{address_id}:
+    delete:
+      tags:
+        - user
+      summary: Xóa địa chỉ
+      security:
+        - Bearer: []
+      parameters:
+        - name: address_id
+          in: path
+          required: true
+          type: integer
+      responses:
+        200:
+          description: Xóa thành công
+        404:
+          description: Địa chỉ không tồn tại
+        401:
+          description: Yêu cầu không hợp lệ hoặc không có quyền truy cập
+
+  /user/set-default-address/{address_id}:
+    put:
+      tags:
+        - user
+      summary: Đặt địa chỉ mặc định
+      security:
+        - Bearer: []
+      parameters:
+        - name: address_id
+          in: path
+          required: true
+          type: integer
+      responses:
+        200:
+          description: Đã đặt địa chỉ mặc định
+        404:
+          description: Địa chỉ không tồn tại
+        401:
+          description: Yêu cầu không hợp lệ hoặc không có quyền truy cập
+  /user/users:
+    get:
+      tags:
+        - user
+      summary: Lấy danh sách user (Chỉ Admin)
+      security:
+        - Bearer: []
+      parameters:
+        - name: role
+          in: query
+          required: false
+          type: string
+          description: "Lọc theo vai trò người dùng (Admin, Staff, Customer)"
+        - name: page
+          in: query
+          required: false
+          type: integer
+          description: "Số trang hiện tại"
+        - name: limit
+          in: query
+          required: false
+          type: integer
+          description: "Số lượng user trên mỗi trang"
+      responses:
+        200:
+          description: Danh sách người dùng
+          schema:
+            type: object
+            properties:
+              total:
+                type: integer
+              page:
+                type: integer
+              per_page:
+                type: integer
+              users:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    username:
+                      type: string
+                    email:
+                      type: string
+                    full_name:
+                      type: string
+                    role:
+                      type: string
+                    avatar_url:
+                      type: string
+                    is_active:
+                      type: boolean
+        403:
+          description: Không đủ quyền
+        401:
+          description: Yêu cầu không hợp lệ hoặc không có quyền truy cập
+  
+  /user/delete/{user_id}:
+    delete:
+      tags:
+        - user
+      summary: Xóa người dùng (Chỉ Admin)
+      description: Cho phép admin xóa người dùng theo ID. Không thể xóa tài khoản admin.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: ID của người dùng cần xóa
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Xóa người dùng thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User deleted successfully
+        '403':
+          description: Không thể xóa tài khoản admin
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Cannot delete admin account
+        '404':
+          description: Không tìm thấy người dùng
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User does not exist
+
+
+  /product/product/{product_id}:
+    get:
+      tags:
+        - product
+      summary: Lấy chi tiết sản phẩm
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          type: integer
+      responses:
+        200:
+          description: Thành công
+          schema:
+            $ref: '#/definitions/ProductDetail'
+        404:
+          description: Sản phẩm không tồn tại
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  /product/products:
+    get:
+      tags:
+        - product
+      summary: 'Lấy danh sách sản phẩm hoặc danh sách theo danh mục'
+      parameters:
+        - name: category_id
+          in: query
+          required: false
+          type: integer
+          description: 'ID của danh mục cần lấy sản phẩm(tùy chọn)'
+      responses:
+        200:
+          description: Thành công
+          schema:
+            $ref: '#/definitions/ProductDetail'
+        400:
+          description: 'Thiếu category_id'
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: 'category_id is required'
+        404:
+          description: 'Không tìm thấy danh mục'
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: 'Category not found'
+
+  /product/add-product:
+    post:
+      tags:
+        - product
+      summary: Thêm sản phẩm mới
+      description: Chỉ Admin hoặc Staff có quyền thêm sản phẩm mới vào hệ thống.
+      consumes:
+        - multipart/form-data
+      produces:
+        - application/json
+      security:
+        - Bearer: []
+      parameters:
+        - name: name
+          in: formData
+          required: true
+          type: string
+          description: Tên sản phẩm
+        - name: description
+          in: formData
+          required: false
+          type: string
+          description: Mô tả sản phẩm
+        - name: price
+          in: formData
+          required: true
+          type: number
+          format: float
+          description: Giá sản phẩm
+        - name: stock
+          in: formData
+          required: false
+          type: integer
+          default: 0
+          description: Số lượng sản phẩm trong kho
+        - name: material
+          in: formData
+          required: false
+          type: string
+          description: Chất liệu sản phẩm
+        - name: origin
+          in: formData
+          required: false
+          type: string
+          description: Xuất xứ sản phẩm
+        - name: brand
+          in: formData
+          required: false
+          type: string
+          description: Thương hiệu sản phẩm
+        - name: discount
+          in: formData
+          required: false
+          type: integer
+          default: 0
+          description: Phần trăm giảm giá
+        - name: category_id
+          in: formData
+          required: true
+          type: integer
+          description: ID danh mục sản phẩm
+        - name: default_image
+          in: formData
+          required: false
+          type: file
+          description: Ảnh mặc định của sản phẩm
+        - name: sub_images
+          in: formData
+          required: false
+          type: array
+          items:
+            type: file
+          description: Các ảnh phụ của sản phẩm
+      responses:
+        201:
+          description: Sản phẩm được thêm thành công
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Product added successfully"
+              product_id:
+                type: integer
+                example: 1
+              default_image:
+                type: string
+                example: "https://example.com/image.jpg"
+              sub_image:
+                type: array
+                items:
+                  type: string
+                  example: "https://example.com/sub_image.jpg"
+        400:
+          description: Thiếu dữ liệu bắt buộc
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Missing required fields"
+        207:
+          description: Sản phẩm được thêm nhưng có lỗi khi tải ảnh
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Product added successfully with error upload image"
+              product_id:
+                type: integer
+                example: 1
+              default_image:
+                type: string
+                example: "https://example.com/image.jpg"
+              sub_image:
+                type: array
+                items:
+                  type: string
+                  example: "https://example.com/sub_image.jpg"
+
+  /product/update-product/{product_id}:
+    put:
+      tags:
+        - product
+      summary: Cập nhật sản phẩm
+      security:
+        - Bearer: []
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          type: integer
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+              description:
+                type: string
+              price:
+                type: number
+              stock:
+                type: integer
+              material:
+                type: string
+              origin:
+                type: string
+              brand:
+                type: string
+              category_id:
+                type: integer
+      responses:
+        200:
+          description: Cập nhật thành công
+        404:
+          description: Sản phẩm không tồn tại
+        401:
+          description: Không có quyền truy cập
+
+  /product/upload-image/{product_id}:
+    post:
+      tags:
+        - product
+      summary: Thêm hình ảnh sản phẩm
+      security:
+        - Bearer: []
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          type: integer
+        - name: image
+          in: formData
+          required: true
+          type: file
+        - name: is_default
+          in: formData
+          required: false
+          type: boolean
+      responses:
+        201:
+          description: Hình ảnh đã được tải lên
+        400:
+          description: Không có file nào được gửi
+        401:
+          description: Không có quyền truy cập
+        404:
+          description: Sản phẩm không tồn tại
+        404:
+          description: không tìm thấy ảnh được tải lên
+
+  /product/delete-image/{image_id}:
+    delete:
+      tags:
+        - product
+      summary: Xóa hình ảnh sản phẩm
+      security:
+        - Bearer: []
+      parameters:
+        - name: image_id
+          in: path
+          required: true
+          type: integer
+      responses:
+        200:
+          description: Xóa thành công
+        404:
+          description: Hình ảnh không tồn tại
+        400:
+          description: Không thể xóa ảnh mặc định
+        401:
+          description: Không có quyền truy cập
+
+  /product/set-default-image/{image_id}:
+    put:
+      tags:
+        - product
+      summary: Đặt hình ảnh mặc định cho sản phẩm
+      description: Chỉ admin hoặc staff có quyền đặt một hình ảnh thành hình ảnh mặc định cho sản phẩm.
+      parameters:
+        - name: image_id
+          in: path
+          required: true
+          type: integer
+          description: ID của hình ảnh cần đặt làm mặc định
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: Đặt hình ảnh mặc định thành công
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Set default image successfully"
+        404:
+          description: Không tìm thấy hình ảnh
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "image not found"
+
+  /product/delete-product/{product_id}:
+    delete:
+      tags:
+        - product
+      summary: Xóa sản phẩm
+      security:
+        - Bearer: []
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          type: integer
+      responses:
+        200:
+          description: Xóa sản phẩm thành công
+        404:
+          description: Sản phẩm không tồn tại
+        401:
+          description: Không có quyền truy cập
+
+  /category/categories:
+    get:
+      tags:
+        - category
+      summary: Lấy danh sách danh mục
+      parameters:
+        - name: parent_id
+          in: query
+          required: false
+          type: integer
+          description: "Lọc theo danh mục cha, nếu không có sẽ lấy tất cả danh mục"
+      responses:
+        200:
+          description: Thành công
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/categories'
+
+  /category/add-category:
+    post:
+      tags:
+        - category
+      summary: Thêm danh mục (Chỉ Admin)
+      security:
+        - Bearer: []
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/CategoryRequest'
+      responses:
+        201:
+          description: Đã thêm danh mục thành công
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+        400:
+          description: Lỗi khi thêm danh mục
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  /category/update-category/{category_id}:
+    put:
+      tags:
+        - category
+      summary: Cập nhật danh mục (Chỉ Admin)
+      security:
+        - Bearer: []
+      parameters:
+        - name: category_id
+          in: path
+          required: false
+          type: integer
+        - name: body
+          in: body
+          required: false
+          schema:
+            $ref: '#/definitions/CategoryRequest'
+      responses:
+        200:
+          description: Đã cập nhật danh mục thành công
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+        404:
+          description: Danh mục không tồn tại
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        304:
+          description: không có gì để cập nhật, dữ liệu không được thay đổi
+
+  /category/delete-category/{category_id}:
+    delete:
+      tags:
+        - category
+      summary: Xóa danh mục (Chỉ Admin)
+      security:
+        - Bearer: []
+      parameters:
+        - name: category_id
+          in: path
+          required: true
+          type: integer
+      responses:
+        200:
+          description: Đã xóa danh mục thành công
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+        404:
+          description: Danh mục không tồn tại
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        400:
+          description: Không thể xóa danh mục do có danh mục con hoặc sản phẩm
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+
+  /image/get-image:
+    get:
+      tags:
+        - image
+      summary: 'Lấy hình ảnh từ máy chủ'
+      description: 'Trả về file hình ảnh'
+      parameters:
+        - name: path
+          in: query
+          type: string
+          required: true
+          description: ''
+      responses:
+        200:
+          description: 'Trả về hình ảnh thành công'
+          schema:
+            type: file
+        400:
+          description: 'Thiếu đường dẫn hình ảnh'
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: 'Missing image path'
+        404:
+          description: 'Không tìm thấy hình ảnh'
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: 'Image not found'
+  
+  /image/get-user-avatar/{user_id}:
+    get:
+      tags:
+        - image
+      summary: Lấy ảnh đại diện của người dùng
+      description: Trả về file ảnh đại diện (avatar) của người dùng dựa trên ID.
+      operationId: getUserAvatar
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          type: integer
+          description: ID của người dùng cần lấy avatar
+          example: 1
+      produces:
+        - image/png
+        - image/jpeg
+        - image/webp
+      responses:
+        200:
+          description: Trả về file ảnh đại diện
+          schema:
+            type: file
+        400:
+          description: Thiếu đường dẫn ảnh
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Missing image path"
+        404:
+          description: Không tìm thấy người dùng hoặc ảnh đại diện
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "User not found"
+
+  /review/product/{product_id}:
+    get:
+      tags:
+        - review
+      summary: 'Lấy danh sách đánh giá của sản phẩm'
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          type: integer
+          description: 'ID của sản phẩm cần lấy đánh giá'
+      responses:
+        200:
+          description: 'Danh sách đánh giá của sản phẩm'
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: integer
+                user:
+                  type: string
+                rating:
+                  type: integer
+                comment:
+                  type: string
+                created_at:
+                  type: string
+                  format: date-time
+        404:
+          description: 'Không tìm thấy sản phẩm'
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: 'Product not found'
+
+  /review/user/{user_id}:
+    get:
+      tags:
+        - review
+      summary: 'Lấy danh sách đánh giá của người dùng'
+      security:
+        - Bearer: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          type: integer
+          description: 'ID của người dùng cần lấy đánh giá'
+      responses:
+        200:
+          description: 'Danh sách đánh giá của người dùng'
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: integer
+                product_id:
+                  type: integer
+                product_name:
+                  type: string
+                rating:
+                  type: integer
+                comment:
+                  type: string
+                created_at:
+                  type: string
+                  format: date-time
+        403:
+          description: 'Không có quyền truy cập'
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: 'Forbidden: You can only view your own reviews'
+        401:
+          description: 'Chưa xác thực'
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: 'Missing Authorization Header'
+
+  /review/add-review/{product_id}:
+    post:
+      tags:
+        - review
+      summary: 'Thêm đánh giá sản phẩm (Chỉ Customer đã mua hàng)'
+      security:
+        - Bearer: []
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          type: integer
+          description: 'ID của sản phẩm cần đánh giá'
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              rating:
+                type: integer
+              comment:
+                type: string
+      responses:
+        201:
+          description: 'Đánh giá được thêm thành công'
+        403:
+          description: 'Chỉ có thể đánh giá sản phẩm đã mua'
+        400:
+          description: 'Lỗi dữ liệu đầu vào'
+
+  /review/update/{review_id}:
+    put:
+      tags:
+        - review
+      summary: 'Sửa đánh giá (Chỉ người đã viết)'
+      security:
+        - Bearer: []
+      parameters:
+        - name: review_id
+          in: path
+          required: true
+          type: integer
+          description: 'ID của đánh giá cần sửa'
+        - name:
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              rating:
+                type: integer
+              comment:
+                type: string
+      responses:
+        200:
+          description: 'Đánh giá được cập nhật thành công'
+        403:
+          description: 'Chỉ có thể sửa đánh giá của chính mình'
+        404:
+          description: 'Không tìm thấy đánh giá'
+
+  /review/delete/{review_id}:
+    delete:
+      tags:
+        - review
+      summary: 'Xóa đánh giá (Chỉ người đã viết hoặc Admin)'
+      security:
+        - Bearer: []
+      parameters:
+        - name: review_id
+          in: path
+          required: true
+          type: integer
+          description: 'ID của đánh giá cần xóa'
+      responses:
+        200:
+          description: 'Đánh giá đã được xóa'
+        403:
+          description: 'Chỉ có thể xóa đánh giá của chính mình hoặc là Admin'
+        404:
+          description: 'Không tìm thấy đánh giá'
+
+  /review/reviews:
+    get:
+      tags:
+        - review
+      summary: 'Lấy toàn bộ đánh giá (Chỉ Admin)'
+      security:
+        - Bearer: []
+      parameters:
+        - name: product_id
+          in: query
+          required: false
+          type: integer
+          description: 'Lọc theo ID sản phẩm'
+        - name: user_id
+          in: query
+          required: false
+          type: integer
+          description: 'Lọc theo ID người dùng'
+        - name: page
+          in: query
+          required: false
+          type: integer
+          description: 'Trang số'
+        - name: limit
+          in: query
+          required: false
+          type: integer
+          description: 'Số lượng đánh giá mỗi trang'
+      responses:
+        200:
+          description: 'Danh sách đánh giá'
+          schema:
+            type: object
+            properties:
+              total:
+                type: integer
+              page:
+                type: integer
+              per_page:
+                type: integer
+              reviews:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    product_id:
+                      type: integer
+                    product_name:
+                      type: string
+                    user_id:
+                      type: integer
+                    user_name:
+                      type: string
+                    rating:
+                      type: integer
+                    comment:
+                      type: string
+                    created_at:
+                      type: string
+                      format: date-time
+
+  /cart/get:
+    get:
+      tags:
+        - cart
+      summary: 'Lấy giỏ hàng của người dùng'
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: 'Danh sách sản phẩm trong giỏ hàng'
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: integer
+                product:
+                  $ref: '#/definitions/ProductDetail'
+                quantity:
+                  type: integer
+        403:
+          description: 'Sai người đúng thời điểm '
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: 'Forbidden: invalid user'
+
+  /cart/add:
+    post:
+      tags:
+        - cart
+      summary: 'Thêm sản phẩm vào giỏ hàng'
+      security:
+        - Bearer: []
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              user_id:
+                type: integer
+              product_id:
+                type: integer
+              quantity:
+                type: integer
+      responses:
+        201:
+          description: 'Thêm sản phẩm vào giỏ hàng thành công'
+        400:
+          description: 'Thiếu thông tin hoặc sản phẩm không đủ hàng'
+        403:
+          description: 'Sai người đúng thời điểm '
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: 'Forbidden: invalid user'
+
+  /cart/update/{cart_item_id}:
+    put:
+      tags:
+        - cart
+      summary: 'Cập nhật số lượng sản phẩm trong giỏ hàng'
+      security:
+        - Bearer: []
+      parameters:
+        - name: cart_item_id
+          in: path
+          required: true
+          type: integer
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              quantity:
+                type: integer
+      responses:
+        200:
+          description: 'Cập nhật giỏ hàng thành công'
+        400:
+          description: 'Số lượng vượt quá số lượng trong kho'
+        404:
+          description: 'Không tìm thấy sản phẩm trong giỏ hàng'
+        403:
+          description: 'Sai người đúng thời điểm '
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: 'Forbidden: invalid user'
+
+  /cart/delete/{cart_item_id}:
+    delete:
+      tags:
+        - cart
+      summary: 'Xóa sản phẩm khỏi giỏ hàng'
+      security:
+        - Bearer: []
+      parameters:
+        - name: cart_item_id
+          in: path
+          required: true
+          type: integer
+      responses:
+        200:
+          description: 'Xóa sản phẩm khỏi giỏ hàng thành công'
+        404:
+          description: 'Không tìm thấy sản phẩm trong giỏ hàng'
+        403:
+          description: 'Sai người đúng thời điểm '
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: 'Forbidden: invalid user'
+
+  /cart/list:
+      get:
+        summary: "Lấy danh sách giỏ hàng"
+        description: "Trả về danh sách tất cả cart item"
+        security:
+          - Bearer: []
+        tags:
+          - cart
+        responses:
+          200:
+            description: "Danh sách giỏ hàng."
+            schema:
+              type: object
+              properties:
+                cart_items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      cart_item_id:
+                        type: integer
+                        example: 1
+                      user_id:
+                        type: integer
+                        example: 10
+                      product_id:
+                        type: integer
+                        example: 1001
+                      quantity:
+                        type: integer
+                        example: 2
+          401:
+            description: "Unauthorized - May tuoi lon"
+          500:
+            description: "Lỗi server nội bộ."
+
+
+  /order/create:
+    post:
+      tags:
+        - order
+      summary: Tạo đơn hàng mới
+      description: Tạo một đơn hàng mới từ các sản phẩm trong giỏ hoặc được chọn. Sau khi đặt hàng, sản phẩm sẽ bị xóa khỏi giỏ hàng.
+      operationId: createOrder
+      consumes:
+        - application/json
+      security:
+        - bearer: []
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              order_items:
+                type: array
+                description: Danh sách sản phẩm đặt hàng
+                items:
+                  type: object
+                  properties:
+                    product_id:
+                      type: integer
+                      example: 1
+                    quantity:
+                      type: integer
+                      example: 2
+                    discount_id:
+                      type: integer
+                      nullable: true
+                      example: 3
+      responses:
+        201:
+          description: Tạo đơn hàng thành công
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Order created successfully"
+              order_id:
+                type: integer
+                example: 101
+              total_price:
+                type: number
+                example: 350000
+        400:
+          description: Lỗi dữ liệu hoặc sản phẩm không hợp lệ
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "No order items provided"
+        404:
+          description: Không tìm thấy người dùng
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "User not found"
+
+  /order/cancel/{order_id}:
+    put:
+      tags:
+        - order
+      summary: 'Hủy đơn hàng'
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          type: integer
+          description: 'ID của đơn hàng cần hủy'
+      responses:
+        200:
+          description: 'Hủy đơn hàng thành công'
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+        400:
+          description: 'Không thể hủy đơn hàng'
+        404:
+          description: 'Không tìm thấy đơn hàng'
+
+  /order/update-status/{order_id}:
+    put:
+      tags:
+        - order
+      summary: 'Cập nhật trạng thái đơn hàng'
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          type: integer
+          description: 'ID của đơn hàng cần cập nhật'
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                description: |
+                  Trạng thái mới của đơn hàng. Các giá trị hợp lệ:
+                  - pending: Đang chờ xử lý
+                  - shipping: Đang giao hàng
+                  - completed: Đã hoàn thành
+                  - canceled: Đã hủy
+                  - returned: Bị trả lại
+                enum:
+                  - pending
+                  - shipping
+                  - completed
+                  - canceled
+                  - returned
+                example: pending, shipping, completed, canceled, returned
+      responses:
+        200:
+          description: 'Cập nhật trạng thái thành công'
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+        400:
+          description: 'Trạng thái không hợp lệ'
+        404:
+          description: 'Không tìm thấy đơn hàng'
+
+  /order/list:
+    get:
+      tags:
+        - order
+      summary: 'Lấy danh sách đơn hàng của người dùng'
+      security:
+        - BearerAuth: []
+      responses:
+        200:
+          description: 'Danh sách đơn hàng'
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: integer
+                total_price:
+                  type: number
+                  format: float
+                status:
+                  type: string
+                discount_id:
+                  type: integer
+                  nullable: true
+                created_at:
+                  type: string
+                  format: date-time
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      product_name:
+                        type: string
+                      product_image:
+                        type: string
+                      product_id:
+                        type: integer
+                      quantity:
+                        type: integer
+                      price:
+                        type: number
+                        format: float
+
+  /order/admin/list:
+    get:
+      tags:
+        - order
+      summary: 'Admin, staff Lấy danh sách đơn hàng'
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: 'Danh sách đơn hàng'
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: integer
+                total_price:
+                  type: number
+                  format: float
+                status:
+                  type: string
+                discount_id:
+                  type: integer
+                  nullable: true
+                created_at:
+                  type: string
+                  format: date-time
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      product_name:
+                        type: string
+                      product_image:
+                        type: string
+                      product_id:
+                        type: integer
+                      quantity:
+                        type: integer
+                      price:
+                        type: number
+                        format: float
+
+  /discount/list:
+    get:
+      tags:
+        - discount
+      summary: Lấy danh sách mã giảm giá
+      description: Trả về danh sách tất cả mã giảm giá. Có thể lọc chỉ các mã còn hiệu lực bằng cách truyền query param `available_filter=true`.
+      operationId: getDiscounts
+      parameters:
+        - name: available_filter
+          in: query
+          description: Lọc theo mã giảm giá còn hiệu lực (đang trong thời gian áp dụng), không truyền sẽ lấy tất cả mã giảm giá, Mẫu "/api/discount/list?available_filter=true"
+          required: false
+          type: boolean
+          default: false
+      responses:
+        200:
+          description: Danh sách mã giảm giá
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  example: 1
+                code:
+                  type: string
+                  example: "NEWUSER20"
+                discount_percent:
+                  type: integer
+                  example: 20
+                release_date:
+                  type: string
+                  format: date-time
+                  example: "2025-04-01T00:00:00Z"
+                expiration_date:
+                  type: string
+                  format: date-time
+                  example: "2025-04-30T00:00:00Z"
+                max_users:
+                  type: integer
+                  example: 100
+                minimum_order_value:
+                  type: number
+                  example: 200000
+                collected_users:
+                  type: integer
+                  example: 45
+                is_valid:
+                  type: boolean
+                  example: true
+  
+  /discount/collect/{discount_id}:
+    post:
+      tags:
+        - discount
+      summary: Thu thập mã giảm giá
+      description: Người dùng thu thập một mã giảm giá
+      security:
+        - Bearer: []
+      parameters:
+        - name: discount_id
+          in: path
+          required: true
+          type: integer
+      responses:
+        201:
+          description: Thu thập thành công
+        400:
+          description: Lỗi (Mã giảm giá không hợp lệ hoặc đã thu thập trước đó)
+        404:
+          description: Không tìm thấy mã giảm giá
+  
+  /discount/my-discounts:
+    get:
+      tags:
+        - discount
+      summary: Lấy danh sách mã giảm giá của người dùng
+      description: Trả về danh sách mã giảm giá mà người dùng đã thu thập
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: Thành công
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                discount_id:
+                  type: integer
+                code:
+                  type: string
+                discount_percent:
+                  type: number
+                realease_date:
+                  type: string
+                  format: date-time
+                expiration_date:
+                  type: string
+                  format: date-time
+                minimum_order_value:
+                  type: number
+                is_used:
+                  type: boolean
+  
+  /discount/delete/{discount_id}:
+    delete:
+      tags:
+        - discount
+      summary: Xóa mã giảm giá
+      description: Chỉ Admin, Staff mới được phép xóa một mã giảm giá theo `discount_id`.
+      operationId: deleteDiscount
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: discount_id
+          in: path
+          required: true
+          description: ID của mã giảm giá cần xóa
+          type: integer
+      responses:
+        200:
+          description: Xóa mã giảm giá thành công
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: Discount deleted successfully
+        404:
+          description: Không tìm thấy mã giảm giá
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: Discount not found
+      x-roles:
+        - admin
+      x-status: Active
+
+  /discount/create:
+    post:
+      tags:
+        - discount
+      summary: Tạo mã giảm giá mới
+      description: Admin, staff tạo một mã giảm giá mới
+      security:
+        - Bearer: []
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required:
+              - code
+              - discount_percent
+              - expiration_date
+            properties:
+              code:
+                type: string
+              discount_percent:
+                type: number
+              expiration_date:
+                type: string
+                format: date
+              max_users:
+                type: integer
+              minimum_order_value:
+                type: number
+      responses:
+        201:
+          description: Tạo thành công
+        400:
+          description: Lỗi (thiếu thông tin hoặc mã đã tồn tại)
