@@ -14,6 +14,7 @@ from app.models import User, UserRole
 from werkzeug.security import generate_password_hash
 from flasgger import Swagger
 import yaml
+from flask_migrate import Migrate
 
 def create_admin():
     admin_email = "truyenh527@gmail.com"
@@ -41,7 +42,7 @@ def create_app():
     jwt.init_app(app)
     mail.init_app(app)
 
-
+    migrate = Migrate(app, db)
     with open("docs/swagger.yaml", "r",encoding="utf-8") as file:
         swagger_template = yaml.safe_load(file)
 
