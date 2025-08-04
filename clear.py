@@ -1,5 +1,9 @@
 import os
 import shutil
+from app.extensions import db
+from app import create_app
+
+app = create_app()
 
 def clearall():
     # Xóa thư mục __pycache__
@@ -17,9 +21,9 @@ def clearall():
             if name == "user":
                 shutil.rmtree(os.path.join(root, name))
                 print(f"Đã xóa: {os.path.join(root, name)}")
-            if name == "migrations":
-                shutil.rmtree(os.path.join(root, name))
-                print(f"Đã xóa: {os.path.join(root, name)}")
 
 if __name__ == "__main__":
+    with app.app_context():
+        db.drop_all()
+        print("Database cleared successfully!")
     clearall()
